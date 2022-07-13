@@ -6,6 +6,9 @@ contract Mteam{
     uint penaltyTime;
     uint public totalBalance;
 
+    uint scale = 10000;
+    uint basePenalty = 5000;
+
     struct Util{
         uint timeAdded;
         uint timeWhenSafe;                                                              //unnecessary occupation of memory, only here for simplicity
@@ -43,15 +46,15 @@ contract Mteam{
     function distributePenaltyFee(uint amount) private{
         for(uint i=0; i<allUsers.length; i++){
             if(allUsers[i] == msg.sender) continue;
-            uint percentage = (userInfo[allUsers[i]].balance)*100 / totalBalance;
-            userInfo[allUsers[i]].balance += percentage * amount;
+            uint percentage = (userInfo[allUsers[i]].balance)*scale / totalBalance;
+            userInfo[allUsers[i]].balance += percentage * amount / scale;
         }
     }
 
     function calculatePenaltyRate() private view returns (uint){                         //returns percentage of tokens that user will be penalised by
         Util memory temp = userInfo[msg.sender];
-        if(block.timestamp > temp.timeWhenSafe) return 0;
-        return (temp.timeWhenSafe - temp.timeAdded) * 50 / (temp.timeWhenSafe - block.timestamp);
+        if(block.timestamp >= temp.timeWhenSafe) return 0;
+        return ((temp.timeWhenSafe - block.timestamp) * scale / penaltyTime) / 2;
     }
 
     function newUserDeposit() private {                                                 //maybe should be payable
@@ -81,13 +84,13 @@ contract Mteam{
         uint balance = userInfo[msg.sender].balance;
         userInfo[msg.sender].balance = 0;
         uint penaltyRate = calculatePenaltyRate();
-        address payable receiver = payable(msg.sender);
    
    
-        distributePenaltyFee(penaltyRate * balance);
+        distributePenaltyFee(penaltyRate * balance/scale);
 
-        totalBalance -= balance * ((100 - penaltyRate) / 100);
-        receiver.transfer(balance * penaltyRate);
+        uint withdraw = (balance * (scale - penaltyRate)) / scale;
+        totalBalance -= withdraw;
+        payable(msg.sender).transfer(withdraw);
         removeUserFromList(msg.sender);
     }
 
