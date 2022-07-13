@@ -4,7 +4,7 @@ pragma solidity >=0.8.0 <0.9.0;
 contract Mteam{
 
     uint penaltyTime;
-    uint totalBalance;
+    uint public totalBalance;
 
     struct Util{
         uint timeAdded;
@@ -89,6 +89,14 @@ contract Mteam{
         totalBalance -= balance * ((100 - penaltyRate) / 100);
         receiver.transfer(balance * penaltyRate);
         removeUserFromList(msg.sender);
+    }
+
+    function getBalance(address user) public view returns(uint){
+        return userInfo[user].balance;
+    }
+
+    function getMyBalance() public view returns (uint) {
+        return userInfo[msg.sender].balance;
     }
 
     function screwOverUser() public{

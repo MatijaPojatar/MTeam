@@ -5,7 +5,7 @@
 // will compile your contracts, add the Hardhat Runtime Environment's members to the
 // global scope, and execute the script.
 const hre = require("hardhat");
-import arg from "./arguments"
+const arg = require("./arguments");
 
 async function main() {
   const currentTimestampInSeconds = Math.round(Date.now() / 1000);
@@ -14,7 +14,7 @@ async function main() {
 
 
   const Contract = await hre.ethers.getContractFactory("Mteam");
-  const contract = await Contract.deploy(arg);
+  const contract = await Contract.deploy(arg[0]);
 
   await contract.deployed();
 
