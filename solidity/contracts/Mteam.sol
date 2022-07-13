@@ -77,7 +77,8 @@ contract Projekat{
 
     function withdrawTokens() public{
 
-        uint balance = userInfo[msg.sender].balance = 0;
+        uint balance = userInfo[msg.sender].balance;
+        userInfo[msg.sender].balance = 0;
         uint penaltyRate = calculatePenaltyRate();
         address payable receiver = payable(msg.sender);
    
