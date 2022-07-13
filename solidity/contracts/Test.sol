@@ -7,7 +7,7 @@ import "hardhat/console.sol";
 contract Test {
 
     address payable public owner;
-    mapping (address payable => uint) balance;
+    mapping (address => uint) balance;
 
     constructor() payable {
         owner = payable(msg.sender);
@@ -15,18 +15,18 @@ contract Test {
 
     function withdraw() public{
         require(balance[msg.sender]<=address(this).balance);
-        owner.transfer(balance[msg.sender])
+        owner.transfer(balance[msg.sender]);
     }
 
     function deposit() payable public{
         balance[msg.sender]+=msg.value;
     }
 
-    function checkBlanace(address user) public returns(uint){
+    function checkBlanace(address user) public view returns(uint){
         return balance[user];
     }
 
-    function totalBalance() public returns(uint){
+    function totalBalance() public view returns(uint){
         return address(this).balance;
     }
     

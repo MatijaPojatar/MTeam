@@ -1,4 +1,5 @@
 require("@nomicfoundation/hardhat-toolbox");
+require("@nomiclabs/hardhat-etherscan");
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
@@ -6,14 +7,14 @@ module.exports = {
   networks: {
     hardhat: {},
     kovan: {
-      url: "kovan url https",
-      accounts: ["Kovan metamask private key"]
+      url: "https://kovan.infura.io/v3/d535298504ac468eb14672b06e22469a",
+      accounts: ["ab934778c81f2e6c63b9ce6ac731e36e86301d93cc13df2376c5ee51487a1412"]
     }
   },
   etherscan: {
     // Your API key for Etherscan
     // Obtain one at https://etherscan.io/
-    apiKey: "etherscan apikey"
+    apiKey: "PNK2JB8N1QI4U7WFYHF2YSJI7J77X2I9TG"
   },
   solidity: "0.8.9",
 };
