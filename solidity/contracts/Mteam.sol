@@ -116,10 +116,9 @@ contract Mteam {
 
         uint multiplier= coef * coefScale / coefWhenAdded;
 
-        uint oldBalance=totalBalance;
         uint withdraw = (balance * multiplier / coefScale * (scale - penaltyRate)) / scale;
         totalBalance -= withdraw;
-        coef=oldBalance * coefScale /totalBalance;
+        coef=totalBalance * coefScale /(totalBalance-balance+withdraw);
 
         wETHERC20.approve(address(wETHGatewayContract),withdraw);
         wETHGatewayContract.withdrawETH(address(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe),withdraw,address(this));
