@@ -56,7 +56,7 @@ export default function MyModal({ open, handleClose }) {
             >
               <HStack w="100%" justifyContent="center">
                 <Image
-                  src="../images/wc.png"
+                  src="wc.png"
                   alt=""
                   width={26}
                   height={26}
@@ -76,7 +76,7 @@ export default function MyModal({ open, handleClose }) {
             >
               <HStack w="100%" justifyContent="center">
                 <Image
-                  src="../images/mm.png"
+                  src="mm.png"
                   alt=""
                   width={25}
                   height={25}
