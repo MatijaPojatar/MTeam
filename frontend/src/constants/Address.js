@@ -1,3 +1,3 @@
-const address1="0x51e69F2662601632771DD17875eA895a76741c96"
+const address1="0x52D492eec9a07D033DCaCca3346eE45b349E72f1"
 
 export default {address1}

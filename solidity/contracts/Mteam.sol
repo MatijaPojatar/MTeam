@@ -110,9 +110,9 @@ contract Mteam {
         uint balance = userInfo[msg.sender].balance;
         uint coefWhenAdded=userInfo[msg.sender].coefWhenAdded;
         userInfo[msg.sender].balance = 0;
+        uint penaltyRate = calculatePenaltyRate();
         userInfo[msg.sender].timeAdded=0;
         userInfo[msg.sender].timeWhenSafe=0;
-        uint penaltyRate = calculatePenaltyRate();
 
         uint multiplier= coef * coefScale / coefWhenAdded;
 
