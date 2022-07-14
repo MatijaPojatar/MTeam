@@ -52,6 +52,8 @@ function App() {
   const withdraw = async () => {
     let data = await contract.methods.withdrawTokens().send({ from: account });
     console.log(data);
+    //let data = await contract.methods.withdrawTest().send({ from: account });
+    //console.log(data);
   };
 
   const info = async () => {

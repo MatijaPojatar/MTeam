@@ -41,11 +41,19 @@ const abi1 = [
   },
   {
     inputs: [],
-    name: "withdrawTokens",
+    name: "withdrawTest",
     outputs: [],
-    stateMutability: "payable",
+    stateMutability: "nonpayable",
     type: "function",
   },
+  {
+    inputs: [],
+    name: "withdrawTokens",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  { stateMutability: "payable", type: "receive" },
 ];
 
 export default { abi1 };
