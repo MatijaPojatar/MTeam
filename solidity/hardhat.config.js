@@ -9,6 +9,9 @@ module.exports = {
     kovan: {
       url: "https://kovan.infura.io/v3/d535298504ac468eb14672b06e22469a",
       accounts: ["ab934778c81f2e6c63b9ce6ac731e36e86301d93cc13df2376c5ee51487a1412"]
+    },
+    local: {
+      url: "http://127.0.0.1:8545",
     }
   },
   etherscan: {
