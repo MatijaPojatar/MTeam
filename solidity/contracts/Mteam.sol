@@ -2,6 +2,8 @@
 pragma solidity >=0.8.0 <0.9.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "hardhat/console.sol";
+
 
 interface WETHGatewayInterface {
     function depositETH(
@@ -32,7 +34,7 @@ contract Mteam {
     uint scale = 1000000;
     uint distributionCoefficient;
     uint interestCoefficient;
-    uint aaveBalance;
+    address private owner;
 
     struct Util {
         uint timeAdded;
@@ -51,11 +53,11 @@ contract Mteam {
     ILendingPool lendingPool=ILendingPool(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe);
 
     constructor(uint penTime) {
+        owner = msg.sender;
         penaltyTime = penTime;
         totalBalance = 0;
         distributionCoefficient = 1 * scale;
         interestCoefficient = 1 * scale;
-        aaveBalance = 0;
     }
 
     event Deposit(address indexed _user, uint _value);
@@ -64,13 +66,17 @@ contract Mteam {
     //_____________________________________________________________________________________________________________________________//
 
 
-    function getAAVEBalance() private returns (uint){
-        return wETHERC20.balanceOf(this);
+    function getAAVEBalance() private view returns (uint){
+        return wETHERC20.balanceOf(address(this));
     }
 
     function updateAAVEData() private {
-        interestCoefficient *= (getAAVEBalance() * scale / aaveBalance) / scale;
-        aaveBalance = getAAVEBalance();
+        if(totalBalance==0){
+            interestCoefficient=1*scale;
+        }else{
+            interestCoefficient = interestCoefficient * (getAAVEBalance() * scale / totalBalance) / scale;
+        }
+        totalBalance = getAAVEBalance();
     }
     
     function calculatePenaltyRate() private view returns (uint) {
@@ -93,14 +99,14 @@ contract Mteam {
 
     function existingUserDeposit() private {
         uint currentBalance = userInfo[msg.sender].balance; 
-        uint leftover = currentBalance * interestCoefficient / intrstCoefWhenAdded; 
+        uint leftover = currentBalance * interestCoefficient / userInfo[msg.sender].intrstCoefWhenAdded; 
         userInfo[msg.sender] = Util({
             timeAdded: block.timestamp,
             timeWhenSafe: block.timestamp + penaltyTime,
-            balance: msg.value + currentBalance * distributionCoefficient / distrCoefWhenAdded,
-            distrCoefWhenAdded: distributionCoefficient
+            balance: msg.value + currentBalance * distributionCoefficient / userInfo[msg.sender].distrCoefWhenAdded,
+            distrCoefWhenAdded: distributionCoefficient,
             intrstCoefWhenAdded: interestCoefficient,
-            leftoverInterest: leftoverInterest + leftover
+            leftoverInterest: userInfo[msg.sender].leftoverInterest + leftover
         }); 
     }
 
@@ -126,28 +132,47 @@ contract Mteam {
         uint balance = userInfo[msg.sender].balance;
         uint distrCoefWhenAdded=userInfo[msg.sender].distrCoefWhenAdded;
         uint intrstCoefWhenAdded = userInfo[msg.sender].intrstCoefWhenAdded;
-        uint leftover = userInfo[msg.sender].leftover;
+        uint leftover = userInfo[msg.sender].leftoverInterest;
 
         uint penaltyRate = calculatePenaltyRate();
 
         userInfo[msg.sender].balance = 0;
         userInfo[msg.sender].timeAdded = 0;
         userInfo[msg.sender].timeWhenSafe = 0;
-        userInfo[msg.sender].leftover=0;
+        userInfo[msg.sender].leftoverInterest=0;
 
         uint multiplier= (distributionCoefficient * interestCoefficient * scale) / (distrCoefWhenAdded * intrstCoefWhenAdded);
 
         uint withdraw = (balance * multiplier / scale * (scale - penaltyRate)) / scale + leftover;
-        totalBalance -= withdraw - leftover;
+        console.log(leftover);
+        console.log(balance);
+        console.log(totalBalance);
+        console.log(withdraw);
+        totalBalance = totalBalance + leftover - withdraw;
+        console.log(balance);
+        console.log(totalBalance);
+        console.log(withdraw);
 
-        distributionCoefficient = totalBalance * scale /(totalBalance-balance+withdraw);
+
+        if((totalBalance+withdraw-balance)==0){
+            distributionCoefficient = 1;
+        }else{
+            distributionCoefficient *= totalBalance * scale /(totalBalance+withdraw-balance);
+        }
 
 
         wETHERC20.approve(address(wETHGatewayContract),withdraw);
         wETHGatewayContract.withdrawETH(address(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe),withdraw,address(this));
 
         payable(msg.sender).transfer(withdraw);
-        emit Withdraw(msg.sender,msg.value);
+        emit Withdraw(msg.sender,withdraw);
+    
+        if((totalBalance+withdraw-balance)==0){
+            uint forOwner=getAAVEBalance();
+            wETHERC20.approve(address(wETHGatewayContract),forOwner);
+            wETHGatewayContract.withdrawETH(address(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe),forOwner,address(this));
+            payable(address(owner)).transfer(forOwner);
+        }
     }
 
     function withdrawTest() public{
