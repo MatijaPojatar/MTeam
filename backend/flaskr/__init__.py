@@ -36,7 +36,7 @@ def create_app(test_config=None):
     db.init_app(app)
 
     from . import cron
-    cron.start()
+    cron.start(app)
 
     # a simple page that says hello
     @app.route('/')
@@ -64,7 +64,7 @@ def create_app(test_config=None):
 
         depositAPR = currentLiquidityRate/RAY
         variableBorrowAPR = currentVariableBorrowRate/RAY
-        stableBorrowAPR = currentVariableBorrowRate/RAY
+        stableBorrowAPR = currentStableBorrowRate/RAY
 
         depositAPY = ((1 + (depositAPR / SECONDS_PER_YEAR)) ** SECONDS_PER_YEAR) - 1
         variableBorrowAPY = ((1 + (variableBorrowAPR / SECONDS_PER_YEAR)) ** SECONDS_PER_YEAR) - 1
