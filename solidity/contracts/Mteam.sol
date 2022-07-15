@@ -31,11 +31,12 @@ contract Mteam {
     uint penaltyTime;
     uint public totalBalance;
 
-    uint scale = 1000000;
+    uint scale = 10**18;
     uint distributionCoefficient;
     uint interestCoefficient;
     address private owner;
     uint prevBalance;
+    uint userCount;
 
     struct Util {
         uint timeAdded;
@@ -60,6 +61,7 @@ contract Mteam {
         distributionCoefficient = 1 * scale;
         interestCoefficient = 1 * scale;
         prevBalance = 0;
+        userCount=0;
     }
 
     event Deposit(address indexed _user, uint _value);
@@ -74,14 +76,17 @@ contract Mteam {
 
     function updateAAVEData() private {
         console.log("===========UPDATE===========");
+        console.log("Prev balance: %i",prevBalance);
+        console.log("Total balance: %i",totalBalance);
         prevBalance=totalBalance;
         totalBalance=getAAVEBalance();
+        console.log("+++++++++++++++++");
         console.log("Prev balance: %i",prevBalance);
         console.log("Total balance: %i",totalBalance);
         if(prevBalance==0){
             interestCoefficient=1*scale;
         }else{
-            interestCoefficient = interestCoefficient * (totalBalance * scale / prevBalance) / scale;
+            interestCoefficient =  interestCoefficient * totalBalance  / prevBalance ;
         }
         console.log("Interest coef: %i",interestCoefficient);
         console.log("===========END_UPDATE===========");
@@ -121,6 +126,7 @@ contract Mteam {
     }
 
     function depositTokens() public payable {
+        userCount=userCount+1;
         if (userInfo[msg.sender].timeAdded == 0) {
             newUserDeposit();
         } else {
@@ -137,6 +143,7 @@ contract Mteam {
 
     function withdrawTokens() public {
         updateAAVEData();
+        userCount=userCount-1;
 
         uint balance = userInfo[msg.sender].balance;
         uint distrCoefWhenAdded=userInfo[msg.sender].distrCoefWhenAdded;
@@ -153,52 +160,46 @@ contract Mteam {
         console.log("Distribution coef: %i",distributionCoefficient);
         console.log("Interest coef: %i",interestCoefficient);
         uint multiplier= (distributionCoefficient * interestCoefficient * scale) / (distrCoefWhenAdded * intrstCoefWhenAdded);
+        console.log("Multiplier: %i",multiplier);
 
-        uint balanceOfLeftee = (balance * multiplier / scale);
+        uint balanceOfLeftee = (balance * distributionCoefficient * interestCoefficient / (distrCoefWhenAdded * intrstCoefWhenAdded));
         console.log("Balance of Leftee: %i",balanceOfLeftee);
 
-        interestCoefficient = interestCoefficient * totalBalance / prevBalance;
-        console.log(totalBalance);
-        console.log(balanceOfLeftee);
+        //getAAVEBalance();
+        console.log("Total balance: %i",totalBalance);
         
-        uint tempBalance = totalBalance - balanceOfLeftee;
         uint penalty = (penaltyRate * trueBalance) / scale;
-        distributionCoefficient = distributionCoefficient * (tempBalance + penalty) * scale / (scale * tempBalance); 
+
+        uint tempBalance = totalBalance - balanceOfLeftee;
 
         uint withdraw = balanceOfLeftee - penalty;
+        console.log("Withdraw: %i",withdraw);
 
-        if(totalBalance==0){
+        wETHERC20.approve(address(wETHGatewayContract),withdraw);
+        wETHGatewayContract.withdrawETH(address(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe),withdraw,address(this));
+
+        payable(msg.sender).transfer(withdraw);
+
+        if(userCount==0){
             distributionCoefficient = scale;
+            interestCoefficient=scale;
         }else{
             console.log("Hajduk");
             console.log("Penalty: %i",penalty);
             console.log("Temp balance: %i",tempBalance);
-            distributionCoefficient = distributionCoefficient * (tempBalance + penalty) * scale / (scale * tempBalance); 
+            console.log("Dist coef before: %i",distributionCoefficient);
+            distributionCoefficient = distributionCoefficient * (totalBalance - withdraw)  /  tempBalance; 
+            console.log("Dist coef after: %i",distributionCoefficient);
         }
 
+        console.log("Distribution coef: %i",distributionCoefficient);
+        console.log("Interest coef: %i",interestCoefficient);
 
-        wETHERC20.approve(address(wETHGatewayContract),withdraw);
-        wETHGatewayContract.withdrawETH(address(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe),withdraw,address(this));
-/*
-        payable(msg.sender).transfer(withdraw);
-        totalBalance = getAAVEBalance();
+
         emit Withdraw(msg.sender,withdraw);
-        console.log(totalBalance);
-        console.log(penalty);
     
-
-        if((totalBalance - penalty)==0){
-            uint forOwner=getAAVEBalance();
-            wETHERC20.approve(address(wETHGatewayContract),forOwner);
-            wETHGatewayContract.withdrawETH(address(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe),forOwner,address(this));
-            payable(address(owner)).transfer(forOwner);
-        }
-        console.log(totalBalance);*/
-    }
-
-    function withdrawTest() public{
-        wETHERC20.approve(address(wETHGatewayContract),type(uint256).max);
-        wETHGatewayContract.withdrawETH(address(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe),type(uint256).max,address(this));
+        totalBalance=getAAVEBalance();
+        console.log("Total balance: %i",totalBalance);
     }
 
     receive() external payable{}
