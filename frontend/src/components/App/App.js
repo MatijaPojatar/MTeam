@@ -20,6 +20,7 @@ import ABI from "../../constants/ABI";
 import Address from "../../constants/Address";
 import APYChart from "../APYChart";
 import LogTable from "../LogTable";
+import axios from "axios";
 
 function App() {
   const [openModal, setOpenModal] = useState(false);

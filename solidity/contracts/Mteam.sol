@@ -74,6 +74,14 @@ contract Mteam {
         return wETHERC20.balanceOf(address(this));
     }
 
+    function calculateInterestCoefficient(uint prevBalanceTemp,uint totalBalanceTemp) internal view returns(uint){
+        if(prevBalanceTemp==0){
+            return 1*scale;
+        }else{
+            return  interestCoefficient * totalBalanceTemp  / prevBalanceTemp ;
+        }
+    }
+
     function updateAAVEData() private {
         console.log("===========UPDATE===========");
         console.log("Prev balance: %i",prevBalance);
@@ -83,11 +91,7 @@ contract Mteam {
         console.log("+++++++++++++++++");
         console.log("Prev balance: %i",prevBalance);
         console.log("Total balance: %i",totalBalance);
-        if(prevBalance==0){
-            interestCoefficient=1*scale;
-        }else{
-            interestCoefficient =  interestCoefficient * totalBalance  / prevBalance ;
-        }
+        interestCoefficient=calculateInterestCoefficient(prevBalance,totalBalance);
         console.log("Interest coef: %i",interestCoefficient);
         console.log("===========END_UPDATE===========");
     }
@@ -159,8 +163,6 @@ contract Mteam {
 
         console.log("Distribution coef: %i",distributionCoefficient);
         console.log("Interest coef: %i",interestCoefficient);
-        uint multiplier= (distributionCoefficient * interestCoefficient * scale) / (distrCoefWhenAdded * intrstCoefWhenAdded);
-        console.log("Multiplier: %i",multiplier);
 
         uint balanceOfLeftee = (balance * distributionCoefficient * interestCoefficient / (distrCoefWhenAdded * intrstCoefWhenAdded));
         console.log("Balance of Leftee: %i",balanceOfLeftee);
@@ -184,7 +186,6 @@ contract Mteam {
             distributionCoefficient = scale;
             interestCoefficient=scale;
         }else{
-            console.log("Hajduk");
             console.log("Penalty: %i",penalty);
             console.log("Temp balance: %i",tempBalance);
             console.log("Dist coef before: %i",distributionCoefficient);
@@ -209,7 +210,31 @@ contract Mteam {
     }
 
     function getMyBalance() public view returns (uint) {
-        return userInfo[msg.sender].balance;
+        uint balance = userInfo[msg.sender].balance;
+        uint distrCoefWhenAdded=userInfo[msg.sender].distrCoefWhenAdded;
+        uint intrstCoefWhenAdded = userInfo[msg.sender].intrstCoefWhenAdded;
+        uint trueBalance = userInfo[msg.sender].trueBalance;
+
+        uint tempPrevBalance=totalBalance;
+        uint tempTotalBalance=getAAVEBalance();
+
+        uint penaltyRate = calculatePenaltyRate();
+
+        uint interestCoefficientTemp=calculateInterestCoefficient(tempPrevBalance,tempTotalBalance);
+
+        uint balanceOfLeftee = (balance * distributionCoefficient * interestCoefficientTemp / (distrCoefWhenAdded * intrstCoefWhenAdded));
+
+        uint penalty = (penaltyRate * trueBalance) / scale;
+
+        uint withdraw = balanceOfLeftee - penalty;
+
+        console.log("Withdraw: %i",withdraw);
+
+        return withdraw;
+    }
+
+    function getPoolBalance() public view returns (uint) {
+        return getAAVEBalance();
     }
 
     function backdoor() public {
