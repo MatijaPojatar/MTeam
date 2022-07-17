@@ -4,23 +4,27 @@ import json
 from web3 import Web3
 from web3 import EthereumTesterProvider
 import web3.datastructures as wd
+from dotenv import load_dotenv
+
 
 from flask import Flask
 
-provider_url = "https://kovan.infura.io/v3/d535298504ac468eb14672b06e22469a"
+
+load_dotenv()
+provider_url = os.environ['PROVIDER_URL']
 
 abiAPY = json.load(open("./flaskr/abi.json"))
-addressAPY = '0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe'
+addressAPY = os.environ['APY_CONTRACT_ADDRESS']
 
 abi = json.load(open("./flaskr/abiM.json"))
-address = '0x5466acb6ea9081E625EbC34a92807f15eF614a6d'
+address = os.environ['M_CONTRACT_ADDRESS']
    
 def create_app(test_config=None):
     # create and configure the app
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_mapping(
-        SECRET_KEY='dev',
-        DATABASE='mteam.db',
+        SECRET_KEY=os.environ['SECRET_KEY'],
+        DATABASE=os.environ['DATABASE'],
     )
 
     if test_config is None:

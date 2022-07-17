@@ -2,23 +2,25 @@ from sched import scheduler
 import time
 import atexit
 import json
+import os
 
 from web3 import Web3
 from web3 import EthereumTesterProvider
 from apscheduler.schedulers.background import BackgroundScheduler
+from dotenv import load_dotenv
 
 
-provider_url = "https://kovan.infura.io/v3/d535298504ac468eb14672b06e22469a"
+load_dotenv()
 
+token_address = os.environ['TOKEN_ADDRESS']
 
-token_address = '0xd0A1E359811322d97991E03f863a0C30C2cF029C'
-#token_address = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
+provider_url = os.environ['PROVIDER_URL']
 
 abiAPY = json.load(open("./flaskr/abi.json"))
-addressAPY = '0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe'
+addressAPY = os.environ['APY_CONTRACT_ADDRESS']
 
 abi = json.load(open("./flaskr/abiM.json"))
-address = '0x5466acb6ea9081E625EbC34a92807f15eF614a6d'
+address = os.environ['M_CONTRACT_ADDRESS']
 
 def fetchAPY(app):
     w3 = Web3(Web3.HTTPProvider(provider_url))
