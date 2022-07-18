@@ -16,7 +16,63 @@ const abi1 = [
       {
         indexed: false,
         internalType: "uint256",
+        name: "_factor",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "_scale",
+        type: "uint256",
+      },
+    ],
+    name: "CalcDistrCoefEvent",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "address",
+        name: "_user",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "_factor",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "_scale",
+        type: "uint256",
+      },
+    ],
+    name: "CalcIntrstCoefEvent",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "address",
+        name: "_user",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
         name: "_value",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "_oldBalance",
         type: "uint256",
       },
     ],
@@ -44,13 +100,6 @@ const abi1 = [
   },
   {
     inputs: [],
-    name: "backdoor",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [],
     name: "depositTokens",
     outputs: [],
     stateMutability: "payable",
@@ -72,16 +121,16 @@ const abi1 = [
   },
   {
     inputs: [],
-    name: "totalBalance",
+    name: "getPoolBalance",
     outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
     stateMutability: "view",
     type: "function",
   },
   {
     inputs: [],
-    name: "withdrawTest",
-    outputs: [],
-    stateMutability: "nonpayable",
+    name: "totalBalance",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
     type: "function",
   },
   {

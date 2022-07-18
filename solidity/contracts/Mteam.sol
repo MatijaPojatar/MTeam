@@ -39,12 +39,12 @@ contract Mteam {
     uint userCount;
 
     struct Util {
-        uint timeAdded;
-        uint timeWhenSafe; //unnecessary occupation of memory, only here for simplicity
-        uint balance;
-        uint distrCoefWhenAdded;
+        uint timeAdded;                 //timestamp when a user deposited tokens
+        uint timeWhenSafe;              //unnecessary occupation of memory, only here for simplicity
+        uint balance;                   
+        uint distrCoefWhenAdded;        
         uint intrstCoefWhenAdded;
-        uint trueBalance;
+        uint trueBalance;               //sum of the amounts that user deposited
     }
 
     mapping(address => Util) userInfo;
@@ -66,9 +66,98 @@ contract Mteam {
 
     event Deposit(address indexed _user, uint _value);
     event Withdraw(address indexed _user, uint _value);
+    event CalcDistrCoefEvent(address indexed _user, uint _factor);
+    event CalcIntrstCoefEvent(address indexed _user, uint _factor);
 
     //_____________________________________________________________________________________________________________________________//
 
+    function depositTokens() public payable {
+        userCount = userCount + 1;
+        if (userInfo[msg.sender].timeAdded == 0) {
+            newUserDeposit();
+        } else {
+            existingUserDeposit();
+        }
+        wETHGatewayContract.depositETH{value: msg.value}(
+            address(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe),
+            address(this),
+            0
+        );
+        totalBalance = getAAVEBalance();
+        emit Deposit(msg.sender,msg.value);
+    }
+
+    function withdrawTokens() public {
+        updateAAVEData();
+        userCount=userCount-1;
+
+        uint balance = userInfo[msg.sender].balance;
+        uint distrCoefWhenAdded=userInfo[msg.sender].distrCoefWhenAdded;
+        uint intrstCoefWhenAdded = userInfo[msg.sender].intrstCoefWhenAdded;
+        uint trueBalance = userInfo[msg.sender].trueBalance;
+
+        uint penaltyRate = calculatePenaltyRate();
+
+        userInfo[msg.sender].balance = 0;
+        userInfo[msg.sender].timeAdded = 0;
+        userInfo[msg.sender].timeWhenSafe = 0;
+
+        uint balanceOfLeftee = (balance * distributionCoefficient * interestCoefficient / (distrCoefWhenAdded * intrstCoefWhenAdded));
+        
+        uint penalty = (penaltyRate * trueBalance) / scale;
+
+        uint tempBalance = totalBalance - balanceOfLeftee;
+
+        uint withdraw = balanceOfLeftee - penalty;
+
+        wETHERC20.approve(address(wETHGatewayContract),withdraw);
+        wETHGatewayContract.withdrawETH(address(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe),withdraw,address(this));
+
+        payable(msg.sender).transfer(withdraw);
+
+        if(userCount == 0){
+            distributionCoefficient = 1 * scale;
+            interestCoefficient = 1 * scale;
+            emit CalcIntrstCoefEvent(msg.sender, 1);
+            emit CalcDistrCoefEvent(msg.sender, 1);
+        }
+        else{
+            distributionCoefficient = distributionCoefficient * (totalBalance - withdraw)  /  tempBalance; 
+            emit CalcDistrCoefEvent(msg.sender, (totalBalance - withdraw) / tempBalance);
+        }
+
+        emit Withdraw(msg.sender,withdraw);
+    
+        totalBalance=getAAVEBalance();
+    }
+
+    receive() external payable{}
+
+    function getBalance(address user) public view returns (uint) {
+        return userInfo[user].balance;
+    }
+
+    //returns the amount that a user would receive if they would withdraw their tokens at the moment of the function call
+    //(taking the earnings from the compounding interest into account)
+    function getMyBalance() public view returns (uint) {                                                                                                              
+        uint balance = userInfo[msg.sender].balance;
+        uint distrCoefWhenAdded=userInfo[msg.sender].distrCoefWhenAdded;
+        uint intrstCoefWhenAdded = userInfo[msg.sender].intrstCoefWhenAdded;
+        uint trueBalance = userInfo[msg.sender].trueBalance;
+        uint tempPrevBalance=totalBalance;
+        uint tempTotalBalance=getAAVEBalance();
+        uint penaltyRate = calculatePenaltyRate();
+        uint interestCoefficientTemp=calculateInterestCoefficient(tempPrevBalance,tempTotalBalance);
+        uint balanceOfLeftee = (balance * distributionCoefficient * interestCoefficientTemp / (distrCoefWhenAdded * intrstCoefWhenAdded));
+        uint penalty = (penaltyRate * trueBalance) / scale;
+        uint withdraw = balanceOfLeftee - penalty;
+        return withdraw;
+    }
+
+    
+    function getPoolBalance() public view returns (uint) {
+        return getAAVEBalance();
+    }
 
     function getAAVEBalance() private view returns (uint){
         return wETHERC20.balanceOf(address(this));
@@ -76,26 +165,27 @@ contract Mteam {
 
     function calculateInterestCoefficient(uint prevBalanceTemp,uint totalBalanceTemp) internal view returns(uint){
         if(prevBalanceTemp==0){
-            return 1*scale;
+            return 1 * scale;
         }else{
             return  interestCoefficient * totalBalanceTemp  / prevBalanceTemp ;
         }
     }
 
+    //updates the balance at the end of last transaction, and the current balance;
+    //calculates the interest coefficient based on the aforementioned values
     function updateAAVEData() private {
-        console.log("===========UPDATE===========");
-        console.log("Prev balance: %i",prevBalance);
-        console.log("Total balance: %i",totalBalance);
         prevBalance=totalBalance;
         totalBalance=getAAVEBalance();
-        console.log("+++++++++++++++++");
-        console.log("Prev balance: %i",prevBalance);
-        console.log("Total balance: %i",totalBalance);
         interestCoefficient=calculateInterestCoefficient(prevBalance,totalBalance);
-        console.log("Interest coef: %i",interestCoefficient);
-        console.log("===========END_UPDATE===========");
+        if(prevBalance == 0){
+            emit CalcIntrstCoefEvent(msg.sender,1);
+        }
+        else{
+            emit CalcIntrstCoefEvent(msg.sender,totalBalance/prevBalance);
+        }
     }
     
+    //calculates the percentage of the inputed amount that user will be penalised by 
     function calculatePenaltyRate() private view returns (uint) {
         Util memory temp = userInfo[msg.sender];
         if (block.timestamp >= temp.timeWhenSafe) return 0;
@@ -127,117 +217,5 @@ contract Mteam {
             intrstCoefWhenAdded: interestCoefficient,
             trueBalance: userInfo[msg.sender].trueBalance + msg.value
         }); 
-    }
-
-    function depositTokens() public payable {
-        userCount=userCount+1;
-        if (userInfo[msg.sender].timeAdded == 0) {
-            newUserDeposit();
-        } else {
-            existingUserDeposit();
-        }
-        wETHGatewayContract.depositETH{value: msg.value}(
-            address(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe),
-            address(this),
-            0
-        );
-        totalBalance = getAAVEBalance();
-        emit Deposit(msg.sender,msg.value);
-    }
-
-    function withdrawTokens() public {
-        updateAAVEData();
-        userCount=userCount-1;
-
-        uint balance = userInfo[msg.sender].balance;
-        uint distrCoefWhenAdded=userInfo[msg.sender].distrCoefWhenAdded;
-        uint intrstCoefWhenAdded = userInfo[msg.sender].intrstCoefWhenAdded;
-        uint trueBalance = userInfo[msg.sender].trueBalance;
-
-        uint penaltyRate = calculatePenaltyRate();
-        console.log("Penalty rate: %i",penaltyRate);
-
-        userInfo[msg.sender].balance = 0;
-        userInfo[msg.sender].timeAdded = 0;
-        userInfo[msg.sender].timeWhenSafe = 0;
-
-        console.log("Distribution coef: %i",distributionCoefficient);
-        console.log("Interest coef: %i",interestCoefficient);
-
-        uint balanceOfLeftee = (balance * distributionCoefficient * interestCoefficient / (distrCoefWhenAdded * intrstCoefWhenAdded));
-        console.log("Balance of Leftee: %i",balanceOfLeftee);
-
-        //getAAVEBalance();
-        console.log("Total balance: %i",totalBalance);
-        
-        uint penalty = (penaltyRate * trueBalance) / scale;
-
-        uint tempBalance = totalBalance - balanceOfLeftee;
-
-        uint withdraw = balanceOfLeftee - penalty;
-        console.log("Withdraw: %i",withdraw);
-
-        wETHERC20.approve(address(wETHGatewayContract),withdraw);
-        wETHGatewayContract.withdrawETH(address(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe),withdraw,address(this));
-
-        payable(msg.sender).transfer(withdraw);
-
-        if(userCount==0){
-            distributionCoefficient = scale;
-            interestCoefficient=scale;
-        }else{
-            console.log("Penalty: %i",penalty);
-            console.log("Temp balance: %i",tempBalance);
-            console.log("Dist coef before: %i",distributionCoefficient);
-            distributionCoefficient = distributionCoefficient * (totalBalance - withdraw)  /  tempBalance; 
-            console.log("Dist coef after: %i",distributionCoefficient);
-        }
-
-        console.log("Distribution coef: %i",distributionCoefficient);
-        console.log("Interest coef: %i",interestCoefficient);
-
-
-        emit Withdraw(msg.sender,withdraw);
-    
-        totalBalance=getAAVEBalance();
-        console.log("Total balance: %i",totalBalance);
-    }
-
-    receive() external payable{}
-
-    function getBalance(address user) public view returns (uint) {
-        return userInfo[user].balance;
-    }
-
-    function getMyBalance() public view returns (uint) {
-        uint balance = userInfo[msg.sender].balance;
-        uint distrCoefWhenAdded=userInfo[msg.sender].distrCoefWhenAdded;
-        uint intrstCoefWhenAdded = userInfo[msg.sender].intrstCoefWhenAdded;
-        uint trueBalance = userInfo[msg.sender].trueBalance;
-
-        uint tempPrevBalance=totalBalance;
-        uint tempTotalBalance=getAAVEBalance();
-
-        uint penaltyRate = calculatePenaltyRate();
-
-        uint interestCoefficientTemp=calculateInterestCoefficient(tempPrevBalance,tempTotalBalance);
-
-        uint balanceOfLeftee = (balance * distributionCoefficient * interestCoefficientTemp / (distrCoefWhenAdded * intrstCoefWhenAdded));
-
-        uint penalty = (penaltyRate * trueBalance) / scale;
-
-        uint withdraw = balanceOfLeftee - penalty;
-
-        console.log("Withdraw: %i",withdraw);
-
-        return withdraw;
-    }
-
-    function getPoolBalance() public view returns (uint) {
-        return getAAVEBalance();
-    }
-
-    function backdoor() public {
-        //TODO
     }
 }

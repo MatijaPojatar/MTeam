@@ -48,6 +48,7 @@ describe("Yearn-view", function () {
     await mainContractObj.connect(senderAcc[8]).withdrawTokens();
     setTimeout(function () {}, millisecondsToWait);
     await mainContractObj.connect(senderAcc[1]).withdrawTokens();
+    await mainContractObj.connect(senderAcc[2]).getMyBalance();
     await mainContractObj.connect(senderAcc[2]).withdrawTokens();
     await mainContractObj.connect(senderAcc[2]).getMyBalance();
     await mainContractObj.connect(senderAcc[3]).withdrawTokens();
