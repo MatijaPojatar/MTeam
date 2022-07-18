@@ -66,6 +66,8 @@ contract Mteam {
 
     event Deposit(address indexed _user, uint _value);
     event Withdraw(address indexed _user, uint _value);
+    event CalcDistrCoefEvent(address indexed _user, uint _factor);
+    event CalcIntrstCoefEvent(address indexed _user, uint _factor);
 
     //_____________________________________________________________________________________________________________________________//
 
@@ -76,7 +78,7 @@ contract Mteam {
 
     function calculateInterestCoefficient(uint prevBalanceTemp,uint totalBalanceTemp) internal view returns(uint){
         if(prevBalanceTemp==0){
-            return 1*scale;
+            return 1 * scale;
         }else{
             return  interestCoefficient * totalBalanceTemp  / prevBalanceTemp ;
         }
@@ -92,6 +94,12 @@ contract Mteam {
         console.log("Prev balance: %i",prevBalance);
         console.log("Total balance: %i",totalBalance);
         interestCoefficient=calculateInterestCoefficient(prevBalance,totalBalance);
+        if(prevBalance == 0){
+            emit CalcIntrstCoefEvent(msg.sender,1);
+        }
+        else{
+            emit CalcIntrstCoefEvent(msg.sender,totalBalance/prevBalance);
+        }
         console.log("Interest coef: %i",interestCoefficient);
         console.log("===========END_UPDATE===========");
     }
@@ -183,13 +191,16 @@ contract Mteam {
         payable(msg.sender).transfer(withdraw);
 
         if(userCount==0){
-            distributionCoefficient = scale;
-            interestCoefficient=scale;
+            distributionCoefficient = 1 * scale;
+            interestCoefficient = 1 * scale;
+            emit CalcIntrstCoefEvent(msg.sender, 1);
+            emit CalcDistrCoefEvent(msg.sender, 1);
         }else{
             console.log("Penalty: %i",penalty);
             console.log("Temp balance: %i",tempBalance);
             console.log("Dist coef before: %i",distributionCoefficient);
             distributionCoefficient = distributionCoefficient * (totalBalance - withdraw)  /  tempBalance; 
+            emit CalcDistrCoefEvent(msg.sender, (totalBalance - withdraw) / tempBalance);
             console.log("Dist coef after: %i",distributionCoefficient);
         }
 
@@ -228,7 +239,7 @@ contract Mteam {
 
         uint withdraw = balanceOfLeftee - penalty;
 
-        console.log("Withdraw: %i",withdraw);
+        console.log("Withdraw BROOOOOOOOOOOOOOOOOOOOOOOOO: %i",withdraw);
 
         return withdraw;
     }
