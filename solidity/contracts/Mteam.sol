@@ -66,6 +66,8 @@ contract Mteam {
 
     event Deposit(address indexed _user, uint _value);
     event Withdraw(address indexed _user, uint _value);
+    event CalcDistrCoefEvent(address indexed _user, uint _oldCoef, uint _newCoef);
+    event CalcIntrstCoefEvent(address indexed _user, uint _oldCoef, uint _newCoef);
 
     //_____________________________________________________________________________________________________________________________//
 
@@ -85,8 +87,10 @@ contract Mteam {
         console.log("Total balance: %i",totalBalance);
         if(prevBalance==0){
             interestCoefficient=1*scale;
+            emit CalcIntrstCoefEvent(msg.sender, 1);
         }else{
             interestCoefficient =  interestCoefficient * totalBalance  / prevBalance ;
+            emit CalcIntrstCoefEvent(msg.sender, totalBalance / prevBalance);
         }
         console.log("Interest coef: %i",interestCoefficient);
         console.log("===========END_UPDATE===========");
@@ -181,14 +185,17 @@ contract Mteam {
         payable(msg.sender).transfer(withdraw);
 
         if(userCount==0){
-            distributionCoefficient = scale;
-            interestCoefficient=scale;
+            distributionCoefficient = 1 * scale;
+            interestCoefficient = 1 * scale;
+            emit CalcDistrCoefEvent(msg.sender, 1);
+            emit CalcIntrstCoefEvent(msg.sender, 1);
         }else{
             console.log("Hajduk");
             console.log("Penalty: %i",penalty);
             console.log("Temp balance: %i",tempBalance);
             console.log("Dist coef before: %i",distributionCoefficient);
             distributionCoefficient = distributionCoefficient * (totalBalance - withdraw)  /  tempBalance; 
+            emit CalcDistrCoefEvent(msg.sender, (totalBalance - withdraw) / tempBalance);
             console.log("Dist coef after: %i",distributionCoefficient);
         }
 
