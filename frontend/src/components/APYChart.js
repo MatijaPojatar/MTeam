@@ -21,14 +21,55 @@ export default function APYChart() {
   const [apys, setApys] = useState([]);
 
   useEffect(() => {
+    let inter=1000
     const interval = setInterval(() => {
       axios
-        .get("https://18ed-80-93-248-90.eu.ngrok.io/apy")
+        .get(process.env.REACT_APP_API+"apy")
         .then((response) => {
-          console.log(response.data);
-          setApys(response.data);
+          let apysTemp = [];
+          response.data.forEach((d) => {
+            let a = new Date(d.timestamp * 1000);
+            let months = [
+              "Jan",
+              "Feb",
+              "Mar",
+              "Apr",
+              "May",
+              "Jun",
+              "Jul",
+              "Aug",
+              "Sep",
+              "Oct",
+              "Nov",
+              "Dec",
+            ];
+            let year = a.getFullYear();
+            let month = months[a.getMonth()];
+            let date = a.getDate();
+            let hour = a.getHours();
+            let min = a.getMinutes();
+            let sec = a.getSeconds();
+            let time =
+              date +
+              " " +
+              month +
+              " " +
+              year +
+              " " +
+              hour +
+              ":" +
+              min +
+              ":" +
+              sec;
+            apysTemp.push({
+              depositAPY: d.depositAPY,
+              timestamp: time,
+            });
+          });
+          setApys(apysTemp);
         });
-    }, 1000);
+        inter=10000
+    }, inter);
     return () => clearInterval(interval);
   }, []);
 
@@ -36,12 +77,12 @@ export default function APYChart() {
     <LineChart
       width={1000}
       height={250}
-      data={data}
+      data={apys}
       margin={{ top: 5, right: 20, bottom: 5, left: 0 }}
     >
-      <Line type="monotone" dataKey="APY" stroke="#8884d8" />
+      <Line type="monotone" dataKey="depositAPY" stroke="#8884d8" />
       <CartesianGrid stroke="#ccc" strokeDasharray="5 5" />
-      <XAxis dataKey="name" />
+      <XAxis dataKey="timestamp" />
       <YAxis />
       <Tooltip />
     </LineChart>
