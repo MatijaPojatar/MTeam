@@ -1,11 +1,12 @@
 import os
 import sqlite3
 import json
+from tkinter import Scale
 from web3 import Web3
 from web3 import EthereumTesterProvider
 import web3.datastructures as wd
 from dotenv import load_dotenv
-
+from flask import request
 
 from flask import Flask
 
@@ -83,19 +84,69 @@ def create_app(test_config=None):
 
     @app.route('/events')
     def events():
+        
+        curr = db.get_db().cursor()
+        curr.execute("SELECT * FROM events")
+        data = curr.fetchall()
+        return json.dumps([dict(row) for row in data])
+
+
+    @app.route('/history')
+    def transactions():
+        address = request.args.get('address')
+        
+        curr = db.get_db().cursor()
+        curr.execute("SELECT * FROM events WHERE address = ? ORDER BY blockNumber ASC",(address,))
+        transactions = [dict(row) for row in curr.fetchall()]
+
+        if len(transactions) == 0:
+            return []
+        curr = db.get_db().cursor()
+        curr.execute("SELECT * FROM coefChanges WHERE blockNumber > ? ORDER BY blockNumber ASC",(transactions[0]['blockNumber'],))
+        coefficients = [dict(row) for row in curr.fetchall()]
+
+        ti = 0
+        ci = 0
+        flg=0
+        last_value = 0 
+        history=[]
+        while ti < len(transactions):
+            while ci < len(coefficients) and coefficients[ci]['blockNumber']<=transactions[ti]['blockNumber']:
+                if flg!=0:
+                    coef = coefficients[ci]['coef']/coefficients[ci]['scale']
+                    profit = last_value*(coef - 1)
+                    if profit!=0:
+                        history.append({'type':coefficients[ci]['type'],'profit':profit})
+                    last_value=last_value*coef
+                ci += 1
+            if transactions[ti]['deposit'] is None:
+                flg = 0
+                last_value = 0
+                history.append(transactions[ti])
+            elif transactions[ti]['withdraw'] is None:
+                flg=1
+                last_value=transactions[ti]['total']
+                history.append(transactions[ti])
+            ti+=1
+
+        return json.dumps(history)
+
+
+    @app.route('/getAllEvents')
+    def events2():
         w3 = Web3(Web3.HTTPProvider(provider_url))
         print(w3.isConnected())
         contract = w3.eth.contract(address = address , abi = abi)
         event_filter = contract.events.Deposit.createFilter(fromBlock=0)#"latest")
+        event_filter2 = contract.events.Withdraw.createFilter(fromBlock=0)#"latest")
         print(contract.functions.totalBalance().call())
         # print(event_filter.get_all_entries())
         depositEvent = contract.events.Deposit()
-        for event in event_filter.get_all_entries():
-            user = event['args']['_user']
-            value = event['args']['_value']
-            blockNumber = event['blockNumber']
-            print(user, value, blockNumber)
+        for event in event_filter.get_all_entries() + event_filter2.get_all_entries():
+            # user = event['args']['_user']
+            # value = event['args']['_value']
+            # blockNumber = event['blockNumber']
+            # print(user, value, blockNumber)
+            print(event)
         return "ok"
-        pass
-
     return app

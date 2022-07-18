@@ -78,18 +78,21 @@ def fetchEvents(app):
         lastBlock = 0 if data[0][0] is None else data[0][0]+1 
         print('lastBlock', lastBlock)
         event_filter = contract.events.Deposit.createFilter(fromBlock=lastBlock)
+        event_filter2 = contract.events.Withdraw.createFilter(fromBlock=lastBlock)
+
         print(contract.functions.totalBalance().call())
-        for event in event_filter.get_all_entries():
+        for event in event_filter.get_all_entries() + event_filter2.get_all_entries():
             user = event['args']['_user']
             value = event['args']['_value']
             blockNumber = event['blockNumber']
             print(user, value, blockNumber)
         
             if event['event']=='Deposit':
+                total = event['args']['_oldBalance']
                 curr.execute(
-                ''' INSERT INTO events(address,deposit,blockNumber)
-                    VALUES (?,?,?)
-                ''', (user,value, blockNumber))
+                ''' INSERT INTO events(address,deposit,blockNumber, total)
+                    VALUES (?,?,?,?)
+                ''', (user,value, blockNumber,total))
             if event['event']=='Withdraw':
                 curr.execute(
                 ''' INSERT INTO events(address,withdraw,blockNumber)
@@ -97,6 +100,35 @@ def fetchEvents(app):
                 ''', (user,value, blockNumber))
             db.get_db().commit()
         
+
+        curr.execute("SELECT max(blockNumber) as t FROM 'coefChanges'")
+        data = curr.fetchall()
+        lastBlock = 0 if data[0][0] is None else data[0][0]+1 
+        print('lastBlock', lastBlock)
+        event_filter = contract.events.CalcDistrCoefEvent.createFilter(fromBlock=lastBlock)
+        event_filter2 = contract.events.CalcIntrstCoefEvent.createFilter(fromBlock=lastBlock)
+
+        print(contract.functions.totalBalance().call())
+        for event in event_filter.get_all_entries() + event_filter2.get_all_entries():
+            user = event['args']['_user']
+            factor = event['args']['_factor']
+            scale = event['args']['_scale']
+            blockNumber = event['blockNumber']
+            print(user, factor, blockNumber)
+        
+            if event['event']=='CalcDistrCoefEvent':
+                curr.execute(
+                ''' INSERT INTO coefChanges(coef,type,blockNumber,scale)
+                    VALUES (?,?,?,?)
+                ''', (factor,event['event'], blockNumber,scale))
+            if event['event']=='CalcIntrstCoefEvent':
+                curr.execute(
+                ''' INSERT INTO coefChanges(coef,type,blockNumber,scale)
+                    VALUES (?,?,?,?)
+                ''', (factor,event['event'], blockNumber,scale))
+            db.get_db().commit()
+        
+
         return True
 
 scheduler = BackgroundScheduler()
