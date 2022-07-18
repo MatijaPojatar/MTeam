@@ -85,9 +85,8 @@ contract Indie {
         );
 
         emit Deposit(msg.sender,msg.value);
-        totalBalance = getAAVEBalance();
         prevBalance = totalBalance;
-        cntUsers = cntUsers + 1;
+        cntUsers++;
     }
 
     function withdrawTokens() public {
@@ -106,13 +105,9 @@ contract Indie {
         uint withdraw = lefteeTotalBalance - penaltyAmount;
         uint tempBalance = totalBalance - lefteeTotalBalance;
 
-        console.log("Calculating mid values");
-
-     /*   wETHERC20.approve(address(wETHGatewayContract),withdraw);
+        wETHERC20.approve(address(wETHGatewayContract),withdraw);
         wETHGatewayContract.withdrawETH(address(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe),withdraw,address(this));
         payable(msg.sender).transfer(withdraw);
-
-        console.log("sending amount to user");
 
         if(totalBalance == lefteeTotalBalance){
             distributionCoefficient = 1 * scale;
@@ -132,7 +127,7 @@ contract Indie {
         prevBalance = totalBalance;
         removeUserData(); 
         cntUsers--;
-        emit Withdraw(msg.sender, withdraw);*/
+        emit Withdraw(msg.sender, withdraw);
     }
 
     function newUserDeposit() private {
@@ -163,7 +158,12 @@ contract Indie {
 
     function updateInterestCoef() private {
         totalBalance = getAAVEBalance();
-        interestCoefficient = interestCoefficient * totalBalance / prevBalance;
+        if(prevBalance == 0){
+            interestCoefficient = 1 * scale;
+        }
+        else{
+            interestCoefficient = interestCoefficient * totalBalance / prevBalance;
+        }
         //transaction
         //prevBalance = totalBalance;
     }

@@ -3,20 +3,28 @@ import sqlite3
 import json
 from web3 import Web3
 from web3 import EthereumTesterProvider
+import web3.datastructures as wd
+from dotenv import load_dotenv
+
 
 from flask import Flask
 
-provider_url = "https://kovan.infura.io/v3/d535298504ac468eb14672b06e22469a"
 
-abi = json.load(open("./flaskr/abi.json"))
-address = '0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe'
+load_dotenv()
+provider_url = os.environ['PROVIDER_URL']
+
+abiAPY = json.load(open("./flaskr/abi.json"))
+addressAPY = os.environ['APY_CONTRACT_ADDRESS']
+
+abi = json.load(open("./flaskr/abiM.json"))
+address = os.environ['M_CONTRACT_ADDRESS']
    
 def create_app(test_config=None):
     # create and configure the app
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_mapping(
-        SECRET_KEY='dev',
-        DATABASE='mteam.db',
+        SECRET_KEY=os.environ['SECRET_KEY'],
+        DATABASE=os.environ['DATABASE'],
     )
 
     if test_config is None:
@@ -36,7 +44,8 @@ def create_app(test_config=None):
     db.init_app(app)
 
     from . import cron
-    cron.start(app)
+    cron.startAPY(app)
+    cron.startEvents(app)
 
     # a simple page that says hello
     @app.route('/')
@@ -54,7 +63,7 @@ def create_app(test_config=None):
     def apyInfo2():
         w3 = Web3(Web3.HTTPProvider(provider_url))
         print(w3.isConnected())
-        contract = w3.eth.contract(address = address , abi = abi)
+        contract = w3.eth.contract(address = addressAPY , abi = abiAPY)
         _, liquidityIndex, variableBorrowIndex,currentLiquidityRate, currentVariableBorrowRate,currentStableBorrowRate, _ ,aTokenAddress, stableDebtTokenAddress,variableDebtTokenAddress, _ , _ = contract.functions.getReserveData("0xd0A1E359811322d97991E03f863a0C30C2cF029C").call()
         print(liquidityIndex)
         RAY = 10**27
@@ -72,5 +81,21 @@ def create_app(test_config=None):
         return str(variableBorrowAPY)
         pass
 
+    @app.route('/events')
+    def events():
+        w3 = Web3(Web3.HTTPProvider(provider_url))
+        print(w3.isConnected())
+        contract = w3.eth.contract(address = address , abi = abi)
+        event_filter = contract.events.Deposit.createFilter(fromBlock=0)#"latest")
+        print(contract.functions.totalBalance().call())
+        # print(event_filter.get_all_entries())
+        depositEvent = contract.events.Deposit()
+        for event in event_filter.get_all_entries():
+            user = event['args']['_user']
+            value = event['args']['_value']
+            blockNumber = event['blockNumber']
+            print(user, value, blockNumber)
+        return "ok"
+        pass
 
     return app
